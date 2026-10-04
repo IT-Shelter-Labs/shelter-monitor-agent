@@ -1,0 +1,32 @@
+# Shelter Watchdog — внешний приёмник heartbeat'ов
+# Запускается НЕ на наблюдаемом сервере, а на другой машине (VPS, Raspberry Pi у друзей и т.п.).
+# Файл: /etc/shelter-watchdog/config.toml (0640 root:shelter)
+
+[watchdog]
+listen = "0.0.0.0"
+port = 8787
+data_file = "/var/lib/shelter-watchdog/state.json"
+# Как часто проверять, не пропал ли кто-то (секунд)
+check_interval = 30
+# Через сколько секунд без heartbeat считать сервер недоступным
+default_timeout = 300
+# Напоминать, что сервер всё ещё недоступен (секунд, 0 = не напоминать)
+remind_interval = 0
+# Токен для GET /api/v1/status (пусто = эндпоинт закрыт)
+status_token = ""
+log_level = "INFO"
+
+[telegram]
+# Можно использовать того же бота, что и у агента: watchdog только отправляет сообщения.
+token = ""
+# token_file = "/etc/shelter-watchdog/telegram.token"
+chat_ids = []
+api_url = "https://api.telegram.org"
+proxy = ""
+
+# По одной секции на каждый сервер. Токен: shelter-watchdog gen-token
+[[agents]]
+id = "home-server"
+name = "Домашний сервер"
+token = "replace-with-output-of-shelter-watchdog-gen-token"
+# timeout = 600   # индивидуальный таймаут

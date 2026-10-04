@@ -1,0 +1,132 @@
+# Shelter Monitor Agent — конфигурация
+# Файл: /etc/shelter-agent/config.toml (права 0640 root:shelter — содержит токен бота)
+# Проверка: shelter-agent check-config
+
+[agent]
+# Имя сервера в уведомлениях (по умолчанию — hostname)
+name = ""
+data_dir = "/var/lib/shelter-agent"
+log_level = "INFO"
+# Сколько дней хранить события и SSH-записи
+retention_days = 30
+
+[telegram]
+# Токен от @BotFather. Можно вынести в отдельный файл (token_file)
+# или передать через переменную окружения SHELTER_TELEGRAM_TOKEN.
+token = ""
+# token_file = "/etc/shelter-agent/telegram.token"
+# Telegram user ID администраторов. Только они могут пользоваться ботом.
+# Узнать ID: shelter-agent get-chat-id
+admin_ids = []
+# Куда слать уведомления (например, ID группы). Пусто = в личку всем admin_ids.
+notify_chat_ids = []
+# Разрешить действия (перезапуск сервисов/контейнеров из [actions])
+allow_actions = true
+# Свой адрес Bot API или прокси, если api.telegram.org недоступен
+api_url = "https://api.telegram.org"
+proxy = ""          # HTTP(S)-прокси, например "http://127.0.0.1:3128" (SOCKS не поддерживается)
+
+[notifications]
+# Минимальная важность уведомлений: info | warning | critical
+# (SSH-входы, новые устройства и восстановления приходят всегда, если включены)
+min_severity = "warning"
+# Критические уведомления приходят даже при /mute
+mute_allows_critical = true
+# info-уведомления без звука
+silent_info = true
+
+[monitor]
+# Интервал проверки ресурсов, секунд
+interval = 30
+cpu_percent = 90
+# Сколько проверок подряд CPU должен быть выше порога (5 × 30 с = 2.5 мин)
+cpu_sustain = 5
+memory_percent = 90
+swap_percent = 80
+disk_percent = 85
+disk_critical_percent = 95
+# Порог load average (5 мин) в пересчёте на одно ядро
+load_per_cpu = 2.0
+temperature_c = 85
+# Точки монтирования для контроля. Пусто = все реальные файловые системы
+disk_mounts = []
+# Шаблоны исключений (fnmatch)
+disk_ignore = ["/boot/efi", "/snap/*", "/var/lib/docker/*"]
+# Сетевые интерфейсы для статистики. Пусто = все невиртуальные
+net_interfaces = []
+
+[docker]
+enabled = true
+socket = "/var/run/docker.sock"
+interval = 30
+# Какие контейнеры отслеживать (шаблоны). Пусто = все.
+# Контейнеры отсюда алертят, даже если не были запущены на момент старта агента.
+watch = []
+ignore = []
+alert_on_unhealthy = true
+
+[services]
+enabled = true
+interval = 60
+# Сервисы systemd для контроля (без .service — допустимо)
+units = ["ssh", "cron", "docker"]
+# Уведомлять о любом юните, перешедшем в failed
+watch_failed_units = true
+
+[connectivity]
+# Проверка доступа в интернет TCP-подключением
+enabled = true
+interval = 60
+targets = ["1.1.1.1:53", "8.8.8.8:53"]
+failures_before_alert = 3
+
+[ssh]
+enabled = true
+# auto | journal | file  (auto: journald, если доступен, иначе log_file)
+source = "auto"
+log_file = "/var/log/auth.log"
+# Уведомлять об успешных входах
+notify_success = true
+# Порог перебора: N неудачных попыток с одного IP за окно (секунд)
+bruteforce_threshold = 10
+bruteforce_window = 300
+# Не повторять уведомление о том же IP чаще, чем раз в N секунд
+bruteforce_cooldown = 3600
+# Входы из этих сетей не уведомляются (но записываются)
+trusted_networks = []   # например ["192.168.1.0/24", "10.8.0.0/24"]
+
+[lan]
+# Обнаружение новых устройств в локальной сети
+enabled = true
+interval = 300
+# Подсети для сканирования. Пусто = подсеть интерфейса маршрута по умолчанию
+subnets = []
+# Активно опрашивать адреса подсети (без root, через ARP)
+active_probe = true
+# Не сканировать подсети больше этого числа адресов
+max_hosts = 1024
+# Первый скан: найденные устройства считаются известными (без уведомлений)
+baseline_first_scan = true
+
+[heartbeat]
+# Сообщает внешнему наблюдателю «я жив». Если сервер упадёт целиком,
+# наблюдатель (shelter-watchdog / Healthchecks.io / Uptime Kuma) пришлёт тревогу.
+enabled = false
+# Shelter Watchdog:  url = "https://watchdog.example.com/api/v1/heartbeat", method = "POST"
+# Healthchecks.io:   url = "https://hc-ping.com/<uuid>",                     method = "GET"
+# Uptime Kuma push:  url = "https://kuma.example.com/api/push/<token>?status=up", method = "GET"
+url = ""
+token = ""
+method = "POST"
+interval = 60
+timeout = 10
+
+[actions]
+# Что можно перезапускать из Telegram. Только эти объекты, только с подтверждением.
+# Для сервисов агенту (пользователь shelter) нужно правило sudoers:
+#   shelter-agent sudoers | sudo tee /etc/sudoers.d/shelter-agent
+services = []      # например ["nginx", "docker"]
+containers = []    # имена контейнеров Docker, например ["nextcloud", "homeassistant"]
+confirm_timeout = 60
+# auto: sudo, если агент запущен не от root
+use_sudo = "auto"
