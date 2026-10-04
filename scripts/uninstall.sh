@@ -20,7 +20,9 @@ rm -rf /opt/shelter-monitor
 if [ "$PURGE" = 1 ]; then
   rm -rf /etc/shelter-agent /etc/shelter-watchdog /var/lib/shelter-agent /var/lib/shelter-watchdog
   rm -f /etc/sudoers.d/shelter-agent
-  id shelter >/dev/null 2>&1 && userdel shelter || true
+  if id shelter >/dev/null 2>&1; then
+    userdel shelter || true
+  fi
   echo "Shelter Monitor removed completely."
 else
   echo "Shelter Monitor removed. Configs (/etc/shelter-*) and data (/var/lib/shelter-*) were kept; use --purge to delete them."
