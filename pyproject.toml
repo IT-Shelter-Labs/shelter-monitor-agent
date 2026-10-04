@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shelter-monitor"
+dynamic = ["version"]
+description = "Lightweight self-hosted Linux server monitoring with a Telegram interface"
+readme = "README.md"
+requires-python = ">=3.10"
+# Standard library only. tomli is needed on Python 3.10 (Ubuntu 22.04: apt install python3-tomli).
+dependencies = ['tomli>=1.1; python_version < "3.11"']
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: System :: Monitoring",
+]
+
+[project.urls]
+Homepage = "https://github.com/IT-Shelter-Labs/shelter-monitor-agent"
+
+[project.scripts]
+shelter-agent = "shelter_monitor.agent.cli:main"
+shelter-watchdog = "shelter_monitor.watchdog.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "shelter_monitor.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["shelter_monitor*"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"

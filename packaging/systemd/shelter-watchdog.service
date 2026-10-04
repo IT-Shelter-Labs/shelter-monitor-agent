@@ -1,0 +1,45 @@
+[Unit]
+Description=Shelter Watchdog (heartbeat receiver)
+Documentation=https://github.com/IT-Shelter-Labs/shelter-monitor-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=shelter
+Group=shelter
+WorkingDirectory=/opt/shelter-monitor
+Environment=PYTHONPATH=/opt/shelter-monitor PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ExecStartPre=/usr/bin/python3 -m shelter_monitor watchdog -c /etc/shelter-watchdog/config.toml check-config --quiet
+ExecStart=/usr/bin/python3 -m shelter_monitor watchdog -c /etc/shelter-watchdog/config.toml run
+Restart=always
+RestartSec=5
+StateDirectory=shelter-watchdog
+StateDirectoryMode=0700
+
+MemoryMax=100M
+TasksMax=64
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

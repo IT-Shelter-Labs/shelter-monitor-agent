@@ -1,0 +1,45 @@
+[Unit]
+Description=Shelter Monitor Agent
+Documentation=https://github.com/IT-Shelter-Labs/shelter-monitor-agent
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=shelter
+Group=shelter
+WorkingDirectory=/opt/shelter-monitor
+Environment=PYTHONPATH=/opt/shelter-monitor PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ExecStartPre=/usr/bin/python3 -m shelter_monitor agent -c /etc/shelter-agent/config.toml check-config --quiet
+ExecStart=/usr/bin/python3 -m shelter_monitor agent -c /etc/shelter-agent/config.toml run
+Restart=always
+RestartSec=10
+StateDirectory=shelter-agent
+StateDirectoryMode=0700
+
+# Resource limits: the agent normally uses ~25-35 MiB RSS and well under 1% CPU.
+MemoryMax=200M
+TasksMax=64
+Nice=5
+
+# Hardening. NoNewPrivileges is intentionally NOT set: restarting allowlisted
+# services goes through `sudo -n systemctl restart <unit>` (see `shelter-agent sudoers`).
+# If [actions].services is empty you can add NoNewPrivileges=yes in an override.
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
