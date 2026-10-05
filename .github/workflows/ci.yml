@@ -35,3 +35,19 @@ jobs:
       - run: ruff check shelter_monitor tests
       - name: shellcheck
         run: shellcheck scripts/*.sh
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t shelter-monitor:ci .
+      - name: Smoke run
+        run: |
+          docker run --rm shelter-monitor:ci agent --version
+          docker run --rm shelter-monitor:ci agent status
+      - name: Validate compose files
+        run: |
+          touch config.toml watchdog.toml
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.watchdog.yml config -q

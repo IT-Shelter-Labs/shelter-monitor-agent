@@ -94,6 +94,9 @@ class Bot:
     def stop(self) -> None:
         self._stop.set()
 
+    def is_alive(self) -> bool:
+        return self._thread.is_alive()
+
     def _poll_loop(self) -> None:
         backoff = 1.0
         while not self._stop.is_set():

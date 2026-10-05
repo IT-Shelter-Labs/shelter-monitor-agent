@@ -13,3 +13,5 @@ venv/
 *.db-shm
 /config.toml
 /data/
+/watchdog.toml
+.env

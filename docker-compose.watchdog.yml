@@ -1,0 +1,44 @@
+# Shelter Watchdog — внешний приёмник heartbeat. Запускается на ДРУГОЙ машине.
+#
+#   cp config/watchdog.example.toml watchdog.toml   # token, chat_ids, [[agents]]
+#   docker compose -f docker-compose.watchdog.yml up -d --build
+#
+# В watchdog.toml оставьте listen = "0.0.0.0" (адрес внутри контейнера).
+services:
+  shelter-watchdog:
+    build: .
+    image: shelter-monitor:latest
+    container_name: shelter-watchdog
+    command: ["watchdog", "run"]
+    restart: unless-stopped
+    init: true
+    ports:
+      # Если перед watchdog стоит TLS-прокси (Caddy/nginx) на этой же машине,
+      # замените на "127.0.0.1:8787:8787".
+      - "8787:8787"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_READ_SEARCH   # чтение watchdog.toml с любыми правами
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 100m
+    volumes:
+      - ./watchdog.toml:/etc/shelter-watchdog/config.toml:ro
+      - watchdog-data:/var/lib/shelter-watchdog
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/healthz', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  watchdog-data:

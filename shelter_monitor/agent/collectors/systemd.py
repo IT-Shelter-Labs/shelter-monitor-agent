@@ -8,6 +8,12 @@ import subprocess
 from dataclasses import dataclass
 
 
+# SYSTEMD_IGNORE_CHROOT: inside a container systemctl may consider itself "in a chroot"
+# and silently ignore commands; the host's systemd is reached via the mounted /run/systemd.
+SYSTEMCTL_ENV = {"LANG": "C", "SYSTEMD_PAGER": "", "SYSTEMD_COLORS": "0", "SYSTEMD_IGNORE_CHROOT": "1",
+                 "PATH": "/usr/sbin:/usr/bin:/sbin:/bin"}
+
+
 @dataclass
 class UnitStatus:
     name: str
@@ -61,7 +67,7 @@ class SystemdClient:
     def _run(self, args: list[str]) -> str:
         proc = subprocess.run(
             [self.systemctl, *args], capture_output=True, text=True, timeout=self.timeout, check=False,
-            env={"LANG": "C", "SYSTEMD_PAGER": "", "SYSTEMD_COLORS": "0", "PATH": "/usr/sbin:/usr/bin:/sbin:/bin"},
+            env=SYSTEMCTL_ENV,
         )
         return proc.stdout
 

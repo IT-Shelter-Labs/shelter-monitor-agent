@@ -4,7 +4,7 @@ import unittest
 from shelter_monitor.agent.app import Agent
 from shelter_monitor.agent.bot.bot import parse_duration
 from shelter_monitor.agent.storage import Storage
-from tests.helpers import FakeAPI, make_config
+from tests.helpers import TOKEN, FakeAPI, make_config
 
 ADMIN = 111
 STRANGER = 999
@@ -116,6 +116,23 @@ class BotTest(unittest.TestCase):
         self.assertTrue(self.agent.storage.get_device("aa:bb:cc:dd:ee:ff").trusted)
         self.bot.handle_update(callback("dev:trust:'; drop table devices"))
         self.assertEqual(self.agent.storage.device_count(), 1)
+
+    def test_health_marker(self):
+        import os
+        import tempfile
+
+        from shelter_monitor.agent.cli import main as cli_main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.agent.health_file = os.path.join(tmp, "health")
+            self.agent.bot.is_alive = lambda: True
+            self.agent._touch_health()
+            cfg_path = os.path.join(tmp, "config.toml")
+            with open(cfg_path, "w") as fh:
+                fh.write(f'[agent]\ndata_dir = "{tmp}"\n[telegram]\ntoken = "{TOKEN}"\nadmin_ids = [1]\n')
+            self.assertEqual(cli_main(["-c", cfg_path, "healthcheck"]), 0)
+            os.utime(self.agent.health_file, (0, 0))
+            self.assertEqual(cli_main(["-c", cfg_path, "healthcheck"]), 1)
 
     def test_parse_duration(self):
         self.assertEqual(parse_duration(""), 3600)

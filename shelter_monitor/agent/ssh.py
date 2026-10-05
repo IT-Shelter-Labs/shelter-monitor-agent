@@ -147,6 +147,8 @@ class JournalSource:
             args = [journalctl, "--follow", "--output=json", "--no-pager", "--quiet"]
             # Resume after the last processed entry so logins during an agent restart are not lost.
             args += [f"--after-cursor={cursor}"] if cursor else ["--lines=0"]
+            if not os.path.exists("/etc/machine-id"):  # container without the host's machine-id
+                args.append("--merge")
             args += [f"SYSLOG_IDENTIFIER={ident}" for ident in SSHD_IDENTIFIERS]
             log.info("reading sshd logs from journald")
             try:

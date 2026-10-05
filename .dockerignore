@@ -1,0 +1,11 @@
+.git
+.github
+**/__pycache__
+*.py[cod]
+tests
+scripts
+packaging
+config.toml
+watchdog.toml
+*.db*
+.env

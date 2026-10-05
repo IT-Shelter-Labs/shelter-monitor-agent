@@ -104,10 +104,30 @@ class Snapshot:
 
 
 class SystemCollector:
-    def __init__(self, proc: str = "/proc", sys: str = "/sys", etc: str = "/etc"):
+    def __init__(self, proc: str = "/proc", sys: str = "/sys", etc: str = "/etc", host_root: str = ""):
+        """`host_root` is where the host's / is mounted when the agent runs in a container
+        (e.g. /host). /proc and /sys are shared with the host kernel and are read directly."""
         self.proc = proc
         self.sys = sys
-        self.etc = etc
+        self.host_root = host_root.rstrip("/")
+        self.etc = os.path.join(self.host_root, "etc") if self.host_root else etc
+
+    def host_path(self, path: str) -> str:
+        """Translate a host path to the path visible to the agent."""
+        if not self.host_root:
+            return path
+        return self.host_root + (path if path != "/" else "")
+
+    def hostname(self) -> str:
+        if self.host_root:
+            try:
+                with open(os.path.join(self.etc, "hostname"), encoding="utf-8") as fh:
+                    name = fh.read().strip()
+                if name:
+                    return name
+            except OSError:
+                pass
+        return socket.gethostname()
 
     def _read(self, rel: str) -> str:
         with open(os.path.join(self.proc, rel), encoding="utf-8", errors="replace") as fh:
@@ -182,6 +202,15 @@ class SystemCollector:
             device, mount, fstype = parts[0], parts[1].replace("\\040", " "), parts[2]
             if fstype not in REAL_FS:
                 continue
+            if self.host_root:
+                # In a container only the host filesystems mounted under host_root count;
+                # report them with host paths ("/host/srv" -> "/srv").
+                if mount == self.host_root:
+                    mount = "/"
+                elif mount.startswith(self.host_root + "/"):
+                    mount = mount[len(self.host_root):]
+                else:
+                    continue
             key = device if device.startswith("/dev/") else f"{device}:{mount}"
             if key in seen:  # bind mounts / btrfs subvolumes of the same device
                 continue
@@ -200,7 +229,7 @@ class SystemCollector:
             if any(fnmatch.fnmatch(mount, pat) for pat in ignore):
                 continue
             try:
-                st = os.statvfs(mount)
+                st = os.statvfs(self.host_path(mount))
             except OSError:
                 continue
             total = st.f_blocks * st.f_frsize
@@ -350,7 +379,7 @@ def take_snapshot(collector: SystemCollector, cpu: CpuSampler, net: NetSampler,
                   disk_mounts: list[str] | None = None, disk_ignore: list[str] | None = None) -> Snapshot:
     return Snapshot(
         ts=time.time(),
-        hostname=socket.gethostname(),
+        hostname=collector.hostname(),
         os_name=collector.os_name(),
         kernel=platform.release(),
         uptime=collector.uptime(),

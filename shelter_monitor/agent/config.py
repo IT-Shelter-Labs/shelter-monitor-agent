@@ -32,6 +32,8 @@ class AgentSection:
     data_dir: str = "/var/lib/shelter-agent"
     log_level: str = "INFO"
     retention_days: int = 30
+    # Where the host's / is mounted when running in a container (env: SHELTER_HOST_ROOT)
+    host_root: str = ""
 
 
 @dataclass
@@ -220,6 +222,12 @@ def load(path: str = DEFAULT_CONFIG_PATH) -> Config:
 
 def _finalize(cfg: Config) -> None:
     errors: list[str] = []
+    env_root = os.environ.get("SHELTER_HOST_ROOT")
+    if env_root is not None:
+        cfg.agent.host_root = env_root.strip()
+    if cfg.agent.host_root and not os.path.isdir(cfg.agent.host_root):
+        cfg.warnings.append(f"[agent].host_root {cfg.agent.host_root!r} does not exist; host paths are read directly")
+        cfg.agent.host_root = ""
     tg = cfg.telegram
     if tg.token_file and not tg.token:
         try:

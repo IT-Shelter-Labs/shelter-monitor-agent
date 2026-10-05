@@ -1,0 +1,56 @@
+# Shelter Monitor Agent in Docker.
+#
+#   cp config/agent.example.toml config.toml   # укажите [telegram].token и admin_ids
+#   docker compose up -d --build
+#   docker compose logs -f
+#
+# Агент наблюдает за ХОСТОМ, поэтому контейнеру нужен доступ к части хоста
+# (всё, кроме docker.sock, — только на чтение). Ненужные строки можно убрать:
+# соответствующая функция просто отключится.
+services:
+  shelter-agent:
+    build: .
+    image: shelter-monitor:latest
+    container_name: shelter-agent
+    restart: unless-stopped
+    init: true
+    # Сеть хоста: трафик интерфейсов, ARP-таблица и обнаружение устройств в LAN.
+    network_mode: host
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_READ_SEARCH   # чтение /var/log/auth.log (syslog:adm) и config.toml с любыми правами
+      # Раскомментируйте, только если заданы [actions].services (перезапуск сервисов
+      # systemd из Telegram): systemd хоста требует CAP_SYS_ADMIN от управляющего процесса.
+      # Просмотр статуса сервисов работает и без этого.
+      # - SYS_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 200m
+    volumes:
+      # Конфигурация и данные (SQLite)
+      - ./config.toml:/etc/shelter-agent/config.toml:ro
+      - shelter-data:/var/lib/shelter-agent
+      # Корень хоста: диски, /etc/os-release, hostname
+      - /:/host:ro,rslave
+      # Docker: состояние контейнеров и их перезапуск из [actions].containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # systemd хоста: статус сервисов и перезапуск из [actions].services (без sudo)
+      - /run/systemd:/run/systemd:ro
+      # Логи SSH: journald (+ machine-id для поиска журнала) или /var/log/auth.log
+      - /var/log:/var/log:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      # Часовой пояс хоста для времени в сообщениях
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  shelter-data:

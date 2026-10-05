@@ -9,6 +9,9 @@ data_dir = "/var/lib/shelter-agent"
 log_level = "INFO"
 # Сколько дней хранить события и SSH-записи
 retention_days = 30
+# Где смонтирован корень хоста, если агент запущен в контейнере.
+# В Docker задаётся переменной окружения SHELTER_HOST_ROOT=/host (уже есть в образе).
+# host_root = ""
 
 [telegram]
 # Токен от @BotFather. Можно вынести в отдельный файл (token_file)

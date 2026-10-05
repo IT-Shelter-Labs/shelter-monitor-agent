@@ -115,7 +115,7 @@ def cmd_get_chat_id(args: argparse.Namespace) -> int:
 def cmd_status(args: argparse.Namespace) -> int:
     from shelter_monitor.agent.collectors.system import CpuSampler, NetSampler, SystemCollector, take_snapshot
 
-    col = SystemCollector()
+    col = SystemCollector(host_root=os.environ.get("SHELTER_HOST_ROOT", ""))
     snap = take_snapshot(col, CpuSampler(col), NetSampler(col))
     if args.json:
         print(json.dumps(snap.to_dict(), indent=2, default=str))
@@ -128,6 +128,26 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"disk {d.mount}: {d.percent:.1f}% ({fmt_bytes(d.free)} free of {fmt_bytes(d.total)})")
     if snap.temperature is not None:
         print(f"temperature {snap.temperature}°C")
+    return 0
+
+
+def cmd_healthcheck(args: argparse.Namespace) -> int:
+    """Exit 0 if the running agent refreshed its liveness marker recently (Docker HEALTHCHECK)."""
+    data_dir = config_mod.AgentSection().data_dir
+    try:
+        data_dir = config_mod.load(args.config).agent.data_dir
+    except config_mod.ConfigError:
+        pass
+    path = os.path.join(data_dir, "health")
+    try:
+        age = time.time() - os.path.getmtime(path)
+    except OSError:
+        print(f"unhealthy: {path} not found", file=sys.stderr)
+        return 1
+    if age > args.max_age:
+        print(f"unhealthy: last liveness mark {age:.0f}s ago", file=sys.stderr)
+        return 1
+    print(f"healthy ({age:.0f}s ago)")
     return 0
 
 
@@ -160,6 +180,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("status", help="print current system metrics")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_status)
+    p = sub.add_parser("healthcheck", help="check that the running agent is alive (for Docker)")
+    p.add_argument("--max-age", type=int, default=180)
+    p.set_defaults(func=cmd_healthcheck)
     p = sub.add_parser("sudoers", help="print sudoers rules for allowlisted service restarts")
     p.add_argument("--user", default="shelter")
     p.set_defaults(func=cmd_sudoers)

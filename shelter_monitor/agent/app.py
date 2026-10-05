@@ -36,7 +36,8 @@ log = logging.getLogger(__name__)
 class Agent:
     def __init__(self, cfg: Config, api: TelegramAPI | None = None, storage: Storage | None = None):
         self.cfg = cfg
-        self.host = cfg.host_name
+        self.system = SystemCollector(host_root=cfg.agent.host_root)
+        self.host = cfg.agent.name or self.system.hostname()
         self.started_at = time.time()
         self.storage = storage or Storage(os.path.join(cfg.agent.data_dir, "agent.db"))
         self.api = api or TelegramAPI(cfg.telegram.token, cfg.telegram.api_url, cfg.telegram.proxy)
@@ -50,7 +51,6 @@ class Agent:
         self.bus.subscribe(self.notifier)
         self.tracker = AlertTracker(self.bus)
 
-        self.system = SystemCollector()
         self.systemd = SystemdClient()
         self.docker = DockerClient(cfg.docker.socket) if cfg.docker.enabled else None
         self._snapshot_lock = threading.Lock()
@@ -81,6 +81,8 @@ class Agent:
             m.name: PeriodicTask(m.name, m.interval, m.tick, initial.get(m.name)) for m in monitors
         }
         self.tasks["maintenance"] = PeriodicTask("maintenance", 6 * 3600, self._maintenance, 60)
+        self.health_file = os.path.join(cfg.agent.data_dir, "health")
+        self.tasks["health"] = PeriodicTask("health", 30, self._touch_health, 10)
 
         self.ssh = SSHWatcher(cfg.ssh, self.storage, self.bus) if cfg.ssh.enabled else None
         self.actions = ActionManager(cfg.actions, self.bus, self.docker, enabled=cfg.telegram.allow_actions)
@@ -101,7 +103,7 @@ class Agent:
 
     def run_checks(self) -> None:
         for name, task in self.tasks.items():
-            if name not in ("maintenance", "heartbeat"):
+            if name not in ("maintenance", "heartbeat", "health"):
                 task.run_once()
 
     def trigger_task(self, name: str) -> bool:
@@ -113,6 +115,17 @@ class Agent:
 
     def _maintenance(self) -> None:
         self.storage.cleanup(self.cfg.agent.retention_days)
+
+    def _touch_health(self) -> None:
+        """Liveness marker for `shelter-agent healthcheck` (Docker HEALTHCHECK)."""
+        if not self.bot.is_alive():
+            log.error("telegram bot thread is not running")
+            return
+        try:
+            with open(self.health_file, "w", encoding="utf-8") as fh:
+                fh.write(f"{time.time():.0f}\n")
+        except OSError as exc:
+            log.warning("cannot write %s: %s", self.health_file, exc)
 
     # -- lifecycle -------------------------------------------------------------------
 
@@ -127,7 +140,7 @@ class Agent:
         parts = [f"Версия {__version__}"]
         if self.ssh:
             parts.append(f"SSH: {self.ssh.source_name}")
-        parts.append("Мониторы: " + ", ".join(n for n in self.tasks if n != "maintenance"))
+        parts.append("Мониторы: " + ", ".join(n for n in self.tasks if n not in ("maintenance", "health")))
         self.bus.emit(Event("agent", "info", "agent_started", "Агент мониторинга запущен", "\n".join(parts),
                             data={"notify": True}))
 

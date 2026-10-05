@@ -21,18 +21,19 @@
 
 1. [Архитектура](#архитектура)
 2. [Требования](#требования)
-3. [Установка агента](#установка-агента)
-4. [Настройка Telegram-бота](#настройка-telegram-бота)
-5. [Конфигурация](#конфигурация)
-6. [Команды бота](#команды-бота)
-7. [Действия: перезапуск сервисов и контейнеров](#действия-перезапуск-сервисов-и-контейнеров)
-8. [Heartbeat и обнаружение падения сервера](#heartbeat-и-обнаружение-падения-сервера)
-9. [Модель безопасности](#модель-безопасности)
-10. [CLI](#cli)
-11. [Обновление и удаление](#обновление-и-удаление)
-12. [Диагностика](#диагностика)
-13. [Разработка](#разработка)
-14. [Дорожная карта](#дорожная-карта)
+3. [Запуск в Docker (docker compose)](#запуск-в-docker-docker-compose)
+4. [Установка без Docker (systemd)](#установка-без-docker-systemd)
+5. [Настройка Telegram-бота](#настройка-telegram-бота)
+6. [Конфигурация](#конфигурация)
+7. [Команды бота](#команды-бота)
+8. [Действия: перезапуск сервисов и контейнеров](#действия-перезапуск-сервисов-и-контейнеров)
+9. [Heartbeat и обнаружение падения сервера](#heartbeat-и-обнаружение-падения-сервера)
+10. [Модель безопасности](#модель-безопасности)
+11. [CLI](#cli)
+12. [Обновление и удаление](#обновление-и-удаление)
+13. [Диагностика](#диагностика)
+14. [Разработка](#разработка)
+15. [Дорожная карта](#дорожная-карта)
 
 ---
 
@@ -92,12 +93,96 @@ shelter_monitor/
 
 ## Требования
 
-- Ubuntu 22.04+ или Debian 12+ (другие дистрибутивы с systemd тоже подойдут);
-- Python 3.10+. Он уже есть в системе. На Python 3.10 установщик сам поставит `python3-tomli`;
-- `sudo` — только если нужен перезапуск сервисов из Telegram;
-- Docker — по желанию.
+- Ubuntu 22.04+ или Debian 12+ (другие дистрибутивы с systemd тоже подойдут).
+- Для запуска в Docker: Docker Engine с плагином `docker compose` на самом наблюдаемом Linux-сервере.
+  Docker Desktop для macOS и Windows не подходит.
+- Для установки без Docker:
+  - Python 3.10+. Он уже есть в системе. На Python 3.10 установщик сам поставит `python3-tomli`;
+  - `sudo` — только если нужен перезапуск сервисов из Telegram.
 
-## Установка агента
+## Запуск в Docker (docker compose)
+
+Образ один для агента и watchdog. Он собирается из `Dockerfile` на основе `python:3.13-slim`
+и дополнительно содержит только `systemctl` и `journalctl` из пакета `systemd`.
+Агент следит за **хостом**, поэтому в [`docker-compose.yml`](docker-compose.yml) контейнеру выдан
+доступ к нужным частям хоста:
+
+| Что подключено | Зачем |
+|---|---|
+| `network_mode: host` | трафик интерфейсов, проверка связи, ARP-таблица и обнаружение устройств в LAN |
+| `/` → `/host` (только чтение) | диски хоста, `/etc/os-release`, имя хоста |
+| `/var/run/docker.sock` | состояние контейнеров и перезапуск из `[actions].containers` |
+| `/run/systemd` (только чтение) | статус сервисов systemd хоста (`systemctl` из образа обращается к systemd хоста) |
+| `/var/log`, `/run/log/journal`, `/etc/machine-id` (только чтение) | логи SSH из journald или `/var/log/auth.log` |
+| `/etc/localtime` (только чтение) | часовой пояс хоста для времени в сообщениях |
+| том `shelter-data` | база SQLite (`/var/lib/shelter-agent`) |
+
+CPU, память, load average, аптайм и температура читаются из `/proc` и `/sys`: в контейнере это данные
+ядра хоста. Если какое-то подключение убрать, соответствующая функция просто отключится.
+
+### Пошагово
+
+1. Склонируйте репозиторий на сервер, который нужно мониторить:
+   ```bash
+   git clone https://github.com/IT-Shelter-Labs/shelter-monitor-agent.git
+   cd shelter-monitor-agent
+   ```
+2. Создайте конфиг из примера:
+   ```bash
+   cp config/agent.example.toml config.toml
+   chmod 600 config.toml
+   ```
+3. Создайте бота у [@BotFather](https://t.me/BotFather) и узнайте свой Telegram ID:
+   ```bash
+   docker compose build
+   docker compose run --rm shelter-agent agent get-chat-id --token 123456:ABC...
+   ```
+   Напишите боту любое сообщение — в терминале появится ваш `user id`. Остановите команду через Ctrl+C.
+   Подробнее — в разделе [Настройка Telegram-бота](#настройка-telegram-бота).
+4. Впишите токен и ID в `config.toml`:
+   ```toml
+   [telegram]
+   token = "123456:ABC..."
+   admin_ids = [123456789]
+   ```
+   Остальные параметры можно оставить по умолчанию (см. [Конфигурация](#конфигурация)).
+   Пути внутри контейнера (`data_dir`, `log_file`, `socket`) менять не нужно.
+5. Запустите агента:
+   ```bash
+   docker compose up -d
+   docker compose logs -f
+   ```
+   В Telegram придёт сообщение «Агент мониторинга запущен», а `/status` покажет сводку по серверу.
+
+Полезные команды:
+
+```bash
+docker compose ps                                              # статус и healthcheck
+docker compose exec shelter-agent shelter-agent check-config   # проверить конфиг
+docker compose exec shelter-agent shelter-agent test-telegram  # тестовое сообщение
+docker compose exec shelter-agent shelter-agent status         # метрики хоста в терминале
+docker compose restart shelter-agent                           # применить изменения config.toml
+```
+
+Обновление: `git pull && docker compose up -d --build`. Данные в томе `shelter-data` сохраняются.
+Удаление: `docker compose down`. Чтобы удалить и базу данных, добавьте флаг `-v`.
+
+### Особенности работы в контейнере
+
+- **Перезапуск сервисов systemd из Telegram** (`[actions].services`) в контейнере работает без sudo.
+  Но systemd хоста требует от вызывающего процесса `CAP_SYS_ADMIN`, поэтому раскомментируйте строку
+  `- SYS_ADMIN` в `cap_add` файла `docker-compose.yml`. Без неё статус сервисов показывается,
+  а перезапуск — нет. Перезапуск контейнеров (`[actions].containers`) работает в любом случае.
+- Правило sudoers и `shelter-agent sudoers` в Docker не нужны.
+- Контейнер работает от root с урезанным набором capabilities (`cap_drop: ALL` + `DAC_READ_SEARCH`),
+  корневой ФС только для чтения, `no-new-privileges` и лимитом памяти 200 МБ.
+  Учтите, что доступ к `docker.sock` фактически равен root-доступу к хосту.
+  Если Docker-мониторинг не нужен, удалите эту строку и задайте `[docker].enabled = false`.
+- Состояние контейнера отслеживает Docker healthcheck (`shelter-agent healthcheck`):
+  `docker compose ps` покажет `unhealthy`, если агент завис.
+- Watchdog в Docker описан в разделе [Heartbeat](#вариант-a-shelter-watchdog-входит-в-проект).
+
+## Установка без Docker (systemd)
 
 ```bash
 git clone https://github.com/IT-Shelter-Labs/shelter-monitor-agent.git
@@ -301,6 +386,17 @@ method = "POST"
 interval = 60
 ```
 
+Через Docker то же самое делается так (на машине для watchdog):
+
+```bash
+cp config/watchdog.example.toml watchdog.toml && chmod 600 watchdog.toml   # token, chat_ids, [[agents]]
+docker compose -f docker-compose.watchdog.yml run --rm shelter-watchdog watchdog gen-token
+docker compose -f docker-compose.watchdog.yml up -d --build
+```
+
+В `watchdog.toml` оставьте `listen = "0.0.0.0"`: это адрес внутри контейнера, а наружу
+публикуется порт 8787 (настраивается в `docker-compose.watchdog.yml`).
+
 Watchdog присылает «🚨 Сервер не отвечает» с последними известными метриками, а после восстановления —
 «✅ снова на связи» с длительностью простоя. Состояние watchdog хранится в
 `/var/lib/shelter-watchdog/state.json`. После перезапуска watchdog каждому агенту даётся полный таймаут,
@@ -370,6 +466,7 @@ shelter-agent test-telegram                # тестовое сообщение
 shelter-agent get-chat-id [--token T]      # показать ID пользователей и чатов, пишущих боту
 shelter-agent status [--json]              # текущие метрики в терминале
 shelter-agent sudoers [--user shelter]     # правила sudoers для [actions].services
+shelter-agent healthcheck [--max-age 180]  # жив ли запущенный агент (Docker HEALTHCHECK)
 
 shelter-watchdog [-c CONFIG] run | check-config | gen-token
 ```
@@ -407,6 +504,10 @@ sudo ./scripts/uninstall.sh --purge     # удалить всё, включая 
 | Перезапуск сервиса: `a password is required` | не установлено правило sudoers (см. [Действия](#действия-перезапуск-сервисов-и-контейнеров)) |
 | Ложные алерты о диске для snap/overlay | добавьте шаблон в `[monitor].disk_ignore` |
 | Telegram заблокирован | `[telegram].proxy` или `api_url` |
+| Docker: на месте `config.toml` появилась папка | файл не был создан до `docker compose up`. Удалите папку и выполните `cp config/agent.example.toml config.toml` |
+| Docker: в `/status` диски контейнера, а не хоста | не подключён `/:/host:ro,rslave` |
+| Docker: нет SSH-событий | проверьте подключения `/var/log`, `/run/log/journal`, `/etc/machine-id` и строку `SSH:` в стартовом сообщении |
+| Docker: перезапуск сервиса — `Access denied` | раскомментируйте `SYS_ADMIN` в `docker-compose.yml` |
 
 Где лежат данные: `/var/lib/shelter-agent/agent.db` (SQLite). Пример запроса:
 `sudo sqlite3 /var/lib/shelter-agent/agent.db 'select * from events order by id desc limit 10'`.

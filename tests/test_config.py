@@ -77,5 +77,22 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(dumped["telegram"]["token"], "***")
 
 
+
+class HostRootConfigTest(unittest.TestCase):
+    def tearDown(self):
+        os.environ.pop("SHELTER_HOST_ROOT", None)
+
+    def test_env_host_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["SHELTER_HOST_ROOT"] = tmp
+            self.assertEqual(make_config().agent.host_root, tmp)
+
+    def test_missing_host_root_falls_back(self):
+        os.environ["SHELTER_HOST_ROOT"] = "/nonexistent-host-root"
+        cfg = make_config()
+        self.assertEqual(cfg.agent.host_root, "")
+        self.assertTrue(any("host_root" in w for w in cfg.warnings))
+
+
 if __name__ == "__main__":
     unittest.main()

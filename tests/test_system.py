@@ -98,5 +98,37 @@ class SystemdParseTest(unittest.TestCase):
         self.assertFalse(units[1].exists)
 
 
+
+class HostRootTest(unittest.TestCase):
+    """Agent running in a container with the host's / mounted at host_root."""
+
+    def test_mounts_and_identity_from_host_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            host = os.path.join(tmp, "host")
+            os.makedirs(os.path.join(host, "etc"))
+            os.makedirs(os.path.join(host, "srv"))
+            with open(os.path.join(host, "etc", "hostname"), "w") as fh:
+                fh.write("real-server\n")
+            with open(os.path.join(host, "etc", "os-release"), "w") as fh:
+                fh.write('PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"\n')
+            proc = os.path.join(tmp, "proc")
+            os.makedirs(proc)
+            with open(os.path.join(proc, "mounts"), "w") as fh:
+                fh.write("overlay / overlay rw 0 0\n"
+                         "/dev/sda1 /etc/hosts ext4 rw 0 0\n"
+                         f"/dev/sda1 {host} ext4 ro 0 0\n"
+                         f"proc {host}/proc proc rw 0 0\n"
+                         f"/dev/sdb1 {host}/srv xfs ro 0 0\n"
+                         f"/dev/sda1 {host}/var/lib/docker ext4 ro 0 0\n")
+            col = SystemCollector(proc=proc, host_root=host + "/")
+            self.assertEqual(col.mounts(), [("/dev/sda1", "/", "ext4"), ("/dev/sdb1", "/srv", "xfs")])
+            disks = col.disks()
+            self.assertEqual([d.mount for d in disks], ["/", "/srv"])  # statvfs went to the host paths
+            self.assertEqual(col.hostname(), "real-server")
+            self.assertEqual(col.os_name(), "Debian GNU/Linux 12 (bookworm)")
+            self.assertEqual(col.host_path("/"), host)
+            self.assertEqual(col.host_path("/srv"), host + "/srv")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from shelter_monitor.agent.collectors.docker import DockerClient, DockerError
+from shelter_monitor.agent.collectors.systemd import SYSTEMCTL_ENV
 from shelter_monitor.agent.config import ActionsSection, normalize_unit
 from shelter_monitor.agent.events import Event, EventBus
 from shelter_monitor.util import esc
@@ -152,7 +153,7 @@ class ActionManager:
     def _restart_service(self, unit: str) -> tuple[bool, str]:
         try:
             proc = subprocess.run(self.service_argv(unit), capture_output=True, text=True, timeout=120, check=False,
-                                  env={"LANG": "C", "PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "SYSTEMD_PAGER": ""})
+                                  env=SYSTEMCTL_ENV)
         except (OSError, subprocess.TimeoutExpired) as exc:
             return False, str(exc)
         output = (proc.stdout + proc.stderr).strip()
