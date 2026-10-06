@@ -155,7 +155,8 @@ def cmd_sudoers(args: argparse.Namespace) -> int:
     cfg = _load(args.config)
     from shelter_monitor.agent.actions import ActionManager
 
-    manager = ActionManager(cfg.actions, bus=None, docker=None)  # type: ignore[arg-type]
+    units = cfg.services.units if cfg.services.enabled else []
+    manager = ActionManager(cfg.actions, bus=None, docker=None, monitored_units=units)  # type: ignore[arg-type]
     sys.stdout.write(manager.sudoers_rules(args.user))
     return 0
 

@@ -17,7 +17,7 @@ DEFAULT_CONFIG_PATH = "/etc/shelter-agent/config.toml"
 # Names that may appear in allowlists. Strict on purpose: these values end up as
 # arguments to systemctl / Docker API paths.
 UNIT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9@_.\-]{0,127}$")
-CONTAINER_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")
+CONTAINER_PATTERN_RE = re.compile(r"^[A-Za-z0-9_.\-*?\[\]]{1,128}$")
 
 SEVERITIES = ("info", "warning", "critical")
 
@@ -109,6 +109,26 @@ class SSHSection:
 
 
 @dataclass
+class FirewallSection:
+    enabled: bool = True
+    source: str = "auto"                    # auto | journal | file
+    log_file: str = "/var/log/ufw.log"      # file mode; /var/log/kern.log is tried as well
+    scan_ports: int = 10                    # distinct ports from one IP ...
+    scan_window: int = 120                  # ... within this many seconds = port scan
+    cooldown: int = 3600
+
+
+@dataclass
+class ConnectionsSection:
+    enabled: bool = True
+    interval: int = 20
+    ports: list[int] = field(default_factory=lambda: [21, 23, 445, 1433, 2375, 2376, 3306, 3389, 5432, 5900, 6379,
+                                                      9200, 11211, 27017])
+    notify_private: bool = False
+    cooldown: int = 86400
+
+
+@dataclass
 class LANSection:
     enabled: bool = True
     interval: int = 300
@@ -130,8 +150,16 @@ class HeartbeatSection:
 
 @dataclass
 class ActionsSection:
+    # systemd units that may be restarted (explicit names, no patterns)
     services: list[str] = field(default_factory=list)
-    containers: list[str] = field(default_factory=list)
+    # also allow restarting the units listed in [services].units
+    allow_monitored_services: bool = True
+    # container name patterns (fnmatch) that may be restarted / started / stopped; "*" = all
+    containers: list[str] = field(default_factory=lambda: ["*"])
+    container_stop: bool = True
+    container_logs: bool = True
+    docker_prune: bool = True
+    agent_restart: bool = True
     confirm_timeout: int = 60
     use_sudo: str = "auto"
 
@@ -146,6 +174,8 @@ class Config:
     services: ServicesSection = field(default_factory=ServicesSection)
     connectivity: ConnectivitySection = field(default_factory=ConnectivitySection)
     ssh: SSHSection = field(default_factory=SSHSection)
+    firewall: FirewallSection = field(default_factory=FirewallSection)
+    connections: ConnectionsSection = field(default_factory=ConnectionsSection)
     lan: LANSection = field(default_factory=LANSection)
     heartbeat: HeartbeatSection = field(default_factory=HeartbeatSection)
     actions: ActionsSection = field(default_factory=ActionsSection)
@@ -248,12 +278,18 @@ def _finalize(cfg: Config) -> None:
     if cfg.notifications.min_severity not in SEVERITIES:
         errors.append(f"[notifications].min_severity must be one of {', '.join(SEVERITIES)}")
 
-    for sect_name in ("monitor", "docker", "services", "connectivity", "lan", "heartbeat"):
+    for sect_name in ("monitor", "docker", "services", "connectivity", "lan", "heartbeat", "connections"):
         if getattr(cfg, sect_name).interval < 5:
             errors.append(f"[{sect_name}].interval must be >= 5 seconds")
 
     if cfg.ssh.source not in ("auto", "journal", "file"):
         errors.append("[ssh].source must be auto, journal or file")
+    if cfg.firewall.source not in ("auto", "journal", "file"):
+        errors.append("[firewall].source must be auto, journal or file")
+    if cfg.firewall.scan_ports < 2 or cfg.firewall.scan_window < 10:
+        errors.append("[firewall].scan_ports must be >= 2 and scan_window >= 10")
+    if any(not 0 < p < 65536 for p in cfg.connections.ports):
+        errors.append("[connections].ports must be TCP ports 1-65535")
     for net in cfg.ssh.trusted_networks:
         try:
             ipaddress.ip_network(net, strict=False)
@@ -285,8 +321,8 @@ def _finalize(cfg: Config) -> None:
         if not UNIT_NAME_RE.match(unit):
             errors.append(f"invalid systemd unit name {unit!r}")
     for name in act.containers:
-        if not CONTAINER_NAME_RE.match(name):
-            errors.append(f"[actions].containers: invalid container name {name!r}")
+        if not CONTAINER_PATTERN_RE.match(name):
+            errors.append(f"[actions].containers: invalid container name or pattern {name!r}")
     if act.use_sudo not in ("auto", "always", "never"):
         errors.append("[actions].use_sudo must be auto, always or never")
     if act.confirm_timeout < 10:

@@ -6,7 +6,7 @@ import time
 import unittest
 
 from shelter_monitor.agent.events import EventBus
-from shelter_monitor.agent.ssh import (FileSource, SSHWatcher, parse_journal_entry, parse_message, parse_syslog_line,
+from shelter_monitor.agent.ssh import (SSHWatcher, file_source, parse_journal_entry, parse_message, parse_syslog_line,
                                        parse_syslog_timestamp)
 from shelter_monitor.agent.storage import Storage
 from tests.helpers import make_config
@@ -140,7 +140,7 @@ class FileSourceTest(unittest.TestCase):
             path = os.path.join(tmp, "auth.log")
             with open(path, "w") as fh:
                 fh.write("Oct  4 10:00:00 h sshd[1]: Accepted password for old from 1.1.1.1 port 1 ssh2\n")
-            src = FileSource(path, storage, stop, poll=0.05)
+            src = file_source(path, storage, stop, poll=0.05)
             got = []
 
             def consume():

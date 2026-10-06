@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fnmatch
 import logging
+from typing import Callable
 
 from shelter_monitor.agent.collectors.docker import Container, DockerClient, DockerError
 from shelter_monitor.agent.config import DockerSection
@@ -16,8 +17,10 @@ log = logging.getLogger(__name__)
 class DockerMonitor:
     name = "docker"
 
-    def __init__(self, cfg: DockerSection, client: DockerClient, tracker: AlertTracker, bus: EventBus):
+    def __init__(self, cfg: DockerSection, client: DockerClient, tracker: AlertTracker, bus: EventBus,
+                 buttons: Callable[[str, str], list[list[tuple[str, str]]]] | None = None):
         self.cfg = cfg
+        self._buttons = buttons or (lambda name, state: [])
         self.interval = cfg.interval
         self._client = client
         self._tracker = tracker
@@ -77,7 +80,7 @@ class DockerMonitor:
                 lambda c=c, sev=sev, title=title: Event(
                     "docker", sev, "container_down", f"{title}: {c.name}",
                     f"Состояние: <b>{esc(c.state)}</b>\n{esc(c.status)}\nОбраз: <code>{esc(c.image)}</code>",
-                    data={"container": c.name, "state": c.state}),
+                    data={"container": c.name, "state": c.state}, buttons=self._buttons(c.name, c.state)),
                 lambda d, c=c: Event("docker", "info", "resolved", f"✅ Контейнер снова работает: {c.name}",
                                      f"Простой: {fmt_duration(d)}", data={"notify": True}),
             )
@@ -85,7 +88,8 @@ class DockerMonitor:
                 self._tracker.check(
                     f"docker:{c.name}:unhealthy", c.health == "unhealthy",
                     lambda c=c: Event("docker", "warning", "container_unhealthy", f"Контейнер unhealthy: {c.name}",
-                                      esc(c.status), data={"container": c.name}),
+                                      esc(c.status), data={"container": c.name},
+                                      buttons=self._buttons(c.name, c.state)),
                     lambda d, c=c: Event("docker", "info", "resolved", f"✅ Контейнер снова healthy: {c.name}",
                                          f"Длительность: {fmt_duration(d)}", data={"notify": True}),
                 )

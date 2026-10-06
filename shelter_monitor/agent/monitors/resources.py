@@ -22,8 +22,10 @@ def _resolved(title: str, category: str = "system"):
 class ResourceMonitor:
     name = "resources"
 
-    def __init__(self, cfg: MonitorSection, collector: SystemCollector, tracker: AlertTracker):
+    def __init__(self, cfg: MonitorSection, collector: SystemCollector, tracker: AlertTracker,
+                 disk_buttons: list[list[tuple[str, str]]] | None = None):
         self.cfg = cfg
+        self._disk_buttons = disk_buttons or []
         self.interval = cfg.interval
         self._collector = collector
         self._tracker = tracker
@@ -89,7 +91,8 @@ class ResourceMonitor:
                 lambda d=disk, s=sev: Event(
                     "system", s, "disk_full", f"Заканчивается место: {d.mount}",
                     f"Занято <b>{d.percent:.0f}%</b>, свободно {fmt_bytes(d.free)} из {fmt_bytes(d.total)}\n"
-                    f"<code>{esc(d.device)}</code> ({esc(d.fstype)})", data={"mount": d.mount, "percent": d.percent}),
+                    f"<code>{esc(d.device)}</code> ({esc(d.fstype)})", data={"mount": d.mount, "percent": d.percent},
+                    buttons=self._disk_buttons),
                 _resolved(f"Место на {disk.mount} в норме"),
             )
         for alert in self._tracker.active():  # mount disappeared -> drop stale alert silently

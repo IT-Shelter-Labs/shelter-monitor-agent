@@ -7,22 +7,20 @@ Debian/Ubuntu) or from tailing /var/log/auth.log (systems with rsyslog).
 from __future__ import annotations
 
 import collections
-import datetime as dt
-import glob
 import ipaddress
-import json
 import logging
 import os
 import re
 import shutil
-import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator
+from typing import Any, Callable
 
 from shelter_monitor.agent.config import SSHSection
 from shelter_monitor.agent.events import Event, EventBus
+from shelter_monitor.agent.logsources import FileSource, JournalSource, journal_readable, parse_syslog_timestamp
+from shelter_monitor.agent.logsources import parse_journal_entry as _parse_journal_entry
 from shelter_monitor.util import esc, fmt_duration
 
 log = logging.getLogger(__name__)
@@ -75,26 +73,6 @@ def parse_message(message: str, ts: float | None = None) -> SSHAuth | None:
     return None
 
 
-def parse_syslog_timestamp(line: str, now: dt.datetime | None = None) -> float | None:
-    """Parse either an RFC3339 prefix ("2026-10-04T20:04:05.123+03:00 host ...")
-    or the classic "Oct  4 20:04:05 host ..." prefix."""
-    head = line.split(" ", 1)[0]
-    if len(head) >= 19 and head[4] == "-" and "T" in head:
-        try:
-            return dt.datetime.fromisoformat(head.replace("Z", "+00:00")).timestamp()
-        except ValueError:
-            return None
-    try:
-        parsed = dt.datetime.strptime(line[:15], "%b %d %H:%M:%S")
-    except ValueError:
-        return None
-    now = now or dt.datetime.now()
-    candidate = parsed.replace(year=now.year)
-    if candidate > now + dt.timedelta(days=1):  # December lines read in January
-        candidate = candidate.replace(year=now.year - 1)
-    return candidate.timestamp()
-
-
 def parse_syslog_line(line: str) -> SSHAuth | None:
     m = _SYSLOG_TAG.search(line)
     if not m:
@@ -104,156 +82,19 @@ def parse_syslog_line(line: str) -> SSHAuth | None:
 
 def parse_journal_entry(raw: str) -> tuple[SSHAuth | None, str | None]:
     """Parse one `journalctl -o json` line. Returns (auth, cursor)."""
-    try:
-        entry = json.loads(raw)
-    except ValueError:
-        return None, None
-    message = entry.get("MESSAGE")
-    if isinstance(message, list):  # non-UTF-8 payloads are encoded as byte arrays
-        message = bytes(message).decode("utf-8", errors="replace")
-    if not isinstance(message, str):
-        return None, entry.get("__CURSOR")
-    ts = None
-    if entry.get("__REALTIME_TIMESTAMP"):
-        ts = int(entry["__REALTIME_TIMESTAMP"]) / 1e6
-    return parse_message(message, ts), entry.get("__CURSOR")
+    return _parse_journal_entry(raw, parse_message)
 
 
 # --- log sources -------------------------------------------------------------------
 
 
-def journal_readable() -> bool:
-    if os.geteuid() == 0:
-        return True
-    for pattern in ("/var/log/journal/*/system.journal", "/run/log/journal/*/system.journal"):
-        for path in glob.glob(pattern):
-            if os.access(path, os.R_OK):
-                return True
-    return False
+def journal_source(state: Any, stop: threading.Event) -> JournalSource:
+    return JournalSource(state, stop, [f"SYSLOG_IDENTIFIER={i}" for i in SSHD_IDENTIFIERS], parse_message,
+                         key="ssh", label="sshd")
 
 
-class JournalSource:
-    name = "journal"
-
-    def __init__(self, state: Any, stop: threading.Event):
-        self._state = state  # Storage (kv) for the journal cursor
-        self._stop = stop
-        self._proc: subprocess.Popen[str] | None = None
-
-    def lines(self) -> Iterator[SSHAuth]:
-        journalctl = shutil.which("journalctl") or "/usr/bin/journalctl"
-        while not self._stop.is_set():
-            cursor = self._state.kv_get("ssh.journal_cursor")
-            args = [journalctl, "--follow", "--output=json", "--no-pager", "--quiet"]
-            # Resume after the last processed entry so logins during an agent restart are not lost.
-            args += [f"--after-cursor={cursor}"] if cursor else ["--lines=0"]
-            if not os.path.exists("/etc/machine-id"):  # container without the host's machine-id
-                args.append("--merge")
-            args += [f"SYSLOG_IDENTIFIER={ident}" for ident in SSHD_IDENTIFIERS]
-            log.info("reading sshd logs from journald")
-            try:
-                self._proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
-                                              env={"LANG": "C.UTF-8", "PATH": "/usr/bin:/bin"})
-            except OSError as exc:
-                log.error("cannot start journalctl: %s", exc)
-                self._stop.wait(60)
-                continue
-            assert self._proc.stdout is not None
-            last_cursor_save = 0.0
-            for raw in self._proc.stdout:
-                auth, cur = parse_journal_entry(raw)
-                if cur and time.monotonic() - last_cursor_save > 5:
-                    self._state.kv_set("ssh.journal_cursor", cur)
-                    last_cursor_save = time.monotonic()
-                if auth:
-                    if cur:
-                        self._state.kv_set("ssh.journal_cursor", cur)
-                    yield auth
-                if self._stop.is_set():
-                    break
-            self.close()
-            if not self._stop.is_set():
-                log.warning("journalctl exited, restarting in 10s")
-                self._stop.wait(10)
-
-    def close(self) -> None:
-        proc, self._proc = self._proc, None
-        if proc and proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-
-
-class FileSource:
-    """Tail a syslog file, following logrotate (inode change / truncation)."""
-
-    name = "file"
-
-    def __init__(self, path: str, state: Any, stop: threading.Event, poll: float = 1.0):
-        self._path = path
-        self._state = state
-        self._stop = stop
-        self._poll = poll
-
-    def _open(self, resume: bool) -> tuple[Any, int] | None:
-        try:
-            fh = open(self._path, "rb")
-        except OSError as exc:
-            log.warning("cannot open %s: %s", self._path, exc)
-            return None
-        st = os.fstat(fh.fileno())
-        if resume:
-            saved_inode, _, saved_pos = (self._state.kv_get("ssh.file_pos", "") or "").partition(":")
-            if saved_inode == str(st.st_ino) and saved_pos.isdigit() and int(saved_pos) <= st.st_size:
-                fh.seek(int(saved_pos))
-            else:
-                fh.seek(0, os.SEEK_END)  # first start: only new lines
-        log.info("reading sshd logs from %s", self._path)
-        return fh, st.st_ino
-
-    def lines(self) -> Iterator[SSHAuth]:
-        opened = None
-        first = True
-        pending = b""
-        while not self._stop.is_set():
-            if opened is None:
-                opened = self._open(resume=first)
-                if opened is None:
-                    self._stop.wait(30)
-                    continue
-                first = False
-                pending = b""
-            fh, inode = opened
-            chunk = fh.readline()
-            if chunk:
-                pending += chunk
-                if not pending.endswith(b"\n"):
-                    continue  # partial line: the rest arrives on a later read
-                line, pending = pending.decode("utf-8", errors="replace").rstrip("\n"), b""
-                auth = parse_syslog_line(line)
-                if auth:
-                    self._state.kv_set("ssh.file_pos", f"{inode}:{fh.tell()}")
-                    yield auth
-                continue
-            self._state.kv_set("ssh.file_pos", f"{inode}:{fh.tell() - len(pending)}")
-            self._stop.wait(self._poll)
-            try:
-                st = os.stat(self._path)
-            except OSError:
-                continue
-            if st.st_ino != inode or st.st_size < fh.tell():
-                log.info("%s rotated, reopening", self._path)
-                fh.close()
-                opened = self._open(resume=False)
-                if opened is not None:
-                    opened[0].seek(0)  # the new file: read from the beginning
-        if opened:
-            opened[0].close()
-
-    def close(self) -> None:
-        pass
+def file_source(path: str, state: Any, stop: threading.Event, poll: float = 1.0) -> FileSource:
+    return FileSource(path, state, stop, parse_syslog_line, key="ssh", poll=poll)
 
 
 # --- detection ---------------------------------------------------------------------
@@ -380,14 +221,18 @@ class SSHWatcher:
             else:
                 mode = "file"
         if mode == "journal":
-            return JournalSource(self._storage, self._stop)
-        return FileSource(self.cfg.log_file, self._storage, self._stop)
+            return journal_source(self._storage, self._stop)
+        return file_source(self.cfg.log_file, self._storage, self._stop)
 
     def start(self, source_factory: Callable[[], Any] | None = None) -> None:
         self._source = (source_factory or self.select_source)()
         self.source_name = self._source.name
         self._thread = threading.Thread(target=self._run, name="ssh-watch", daemon=True)
         self._thread.start()
+
+    @property
+    def source_error(self) -> str:
+        return getattr(self._source, "error", "") if self._source else ""
 
     def _run(self) -> None:
         try:

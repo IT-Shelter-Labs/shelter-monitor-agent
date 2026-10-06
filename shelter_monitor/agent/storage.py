@@ -219,6 +219,15 @@ class Storage:
         cur = self._exec("UPDATE devices SET trusted = ? WHERE mac = ?", (int(trusted), mac))
         return cur.rowcount > 0
 
+    def trust_all_devices(self) -> int:
+        return self._exec("UPDATE devices SET trusted = 1 WHERE trusted = 0").rowcount
+
+    def forget_devices(self) -> int:
+        return self._exec("DELETE FROM devices").rowcount
+
+    def delete_device(self, mac: str) -> bool:
+        return self._exec("DELETE FROM devices WHERE mac = ?", (mac,)).rowcount > 0
+
     @staticmethod
     def _device(r: sqlite3.Row) -> DeviceRow:
         return DeviceRow(

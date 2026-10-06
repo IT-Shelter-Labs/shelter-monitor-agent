@@ -53,7 +53,7 @@ class DockerClient:
     def available(self) -> bool:
         return os.path.exists(self.socket_path)
 
-    def _request(self, method: str, path: str, timeout: float | None = None) -> Any:
+    def _request(self, method: str, path: str, timeout: float | None = None, raw: bool = False) -> Any:
         conn = _UnixHTTPConnection(self.socket_path, timeout or self.timeout)
         try:
             conn.request(method, f"/{self.API_VERSION}{path}", headers={"Host": "docker"})
@@ -69,6 +69,8 @@ class DockerClient:
             except ValueError:
                 message = body[:200].decode(errors="replace")
             raise DockerError(f"docker API {resp.status}: {message}")
+        if raw:
+            return body
         if not body:
             return None
         try:
@@ -103,6 +105,63 @@ class DockerClient:
             )
         return sorted(result, key=lambda c: c.name)
 
-    def restart(self, name: str, timeout: int = 20) -> None:
+    def container(self, name: str) -> Container | None:
+        for c in self.containers():
+            if c.name == name or c.id == name:
+                return c
+        return None
+
+    def networks(self) -> list[tuple[str, str]]:
+        """(network name, IPv4 subnet) of all Docker networks."""
+        result = []
+        for net in self._request("GET", "/networks") or []:
+            for cfg in (net.get("IPAM") or {}).get("Config") or []:
+                subnet = cfg.get("Subnet", "")
+                if subnet and ":" not in subnet:
+                    result.append((net.get("Name", ""), subnet))
+        return result
+
+    def _post_container(self, name: str, action: str, timeout: int = 20) -> None:
         quoted = urllib.parse.quote(name, safe="")
-        self._request("POST", f"/containers/{quoted}/restart?t={int(timeout)}", timeout=timeout + 30)
+        self._request("POST", f"/containers/{quoted}/{action}?t={int(timeout)}", timeout=timeout + 30)
+
+    def restart(self, name: str, timeout: int = 20) -> None:
+        self._post_container(name, "restart", timeout)
+
+    def start(self, name: str) -> None:
+        quoted = urllib.parse.quote(name, safe="")
+        self._request("POST", f"/containers/{quoted}/start", timeout=60)
+
+    def stop(self, name: str, timeout: int = 20) -> None:
+        self._post_container(name, "stop", timeout)
+
+    def logs(self, name: str, tail: int = 40) -> str:
+        quoted = urllib.parse.quote(name, safe="")
+        body = self._request("GET", f"/containers/{quoted}/logs?stdout=1&stderr=1&tail={int(tail)}", raw=True)
+        return demux_logs(body or b"")
+
+    def prune(self) -> tuple[int, int]:
+        """Remove dangling images and build cache. Returns (images removed, bytes reclaimed)."""
+        images = self._request("POST", "/images/prune", timeout=300) or {}
+        reclaimed = int(images.get("SpaceReclaimed") or 0)
+        removed = len(images.get("ImagesDeleted") or [])
+        try:
+            build = self._request("POST", "/build/prune", timeout=300) or {}
+            reclaimed += int(build.get("SpaceReclaimed") or 0)
+        except DockerError:
+            pass  # old engines without the build cache API
+        return removed, reclaimed
+
+
+def demux_logs(body: bytes) -> str:
+    """Docker multiplexes stdout/stderr of non-TTY containers with 8-byte frame headers."""
+    out = bytearray()
+    pos = 0
+    framed = len(body) >= 8 and body[0] in (0, 1, 2) and body[1:4] == b"\x00\x00\x00"
+    if not framed:
+        return body.decode("utf-8", errors="replace")
+    while pos + 8 <= len(body):
+        size = int.from_bytes(body[pos + 4:pos + 8], "big")
+        out += body[pos + 8:pos + 8 + size]
+        pos += 8 + size
+    return out.decode("utf-8", errors="replace")

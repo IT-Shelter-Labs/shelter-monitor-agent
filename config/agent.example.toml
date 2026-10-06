@@ -98,6 +98,29 @@ bruteforce_cooldown = 3600
 # Входы из этих сетей не уведомляются (но записываются)
 trusted_networks = []   # например ["192.168.1.0/24", "10.8.0.0/24"]
 
+[firewall]
+# «Кто стучался»: анализ пакетов, заблокированных файрволом (UFW / iptables LOG),
+# и обнаружение сканирования портов. Нужен включённый файрвол с логированием:
+#   sudo ufw enable && sudo ufw logging low
+enabled = true
+# auto | journal | file  (auto: journald — сообщения ядра; иначе log_file или /var/log/kern.log)
+source = "auto"
+log_file = "/var/log/ufw.log"
+# Сканирование = один IP перебрал столько разных портов за scan_window секунд
+scan_ports = 10
+scan_window = 120
+cooldown = 3600
+
+[connections]
+# Уведомлять о внешних подключениях к опасным портам (RDP, VNC, БД, Docker API...),
+# если на сервере они слушаются. Подключения из локальной сети и trusted_networks из [ssh] не уведомляются.
+enabled = true
+interval = 20
+ports = [21, 23, 445, 1433, 2375, 2376, 3306, 3389, 5432, 5900, 6379, 9200, 11211, 27017]
+notify_private = false
+# Повторно о том же IP и порте — не чаще раза в N секунд
+cooldown = 86400
+
 [lan]
 # Обнаружение новых устройств в локальной сети
 enabled = true
@@ -113,7 +136,8 @@ baseline_first_scan = true
 
 [heartbeat]
 # Сообщает внешнему наблюдателю «я жив». Если сервер упадёт целиком,
-# наблюдатель (shelter-watchdog / Healthchecks.io / Uptime Kuma) пришлёт тревогу.
+# наблюдатель пришлёт тревогу в Telegram. Проще всего — бесплатный Healthchecks.io
+# с интеграцией Telegram: второй сервер не нужен (см. README, раздел Heartbeat).
 enabled = false
 # Shelter Watchdog:  url = "https://watchdog.example.com/api/v1/heartbeat", method = "POST"
 # Healthchecks.io:   url = "https://hc-ping.com/<uuid>",                     method = "GET"
@@ -125,11 +149,19 @@ interval = 60
 timeout = 10
 
 [actions]
-# Что можно перезапускать из Telegram. Только эти объекты, только с подтверждением.
-# Для сервисов агенту (пользователь shelter) нужно правило sudoers:
+# Действия из Telegram. Все — только с подтверждением, все пишутся в журнал.
+# Перезапуск сервисов: перечисленные здесь + (если allow_monitored_services) все из [services].units.
+# Без Docker агенту (пользователь shelter) нужно правило sudoers:
 #   shelter-agent sudoers | sudo tee /etc/sudoers.d/shelter-agent
-services = []      # например ["nginx", "docker"]
-containers = []    # имена контейнеров Docker, например ["nextcloud", "homeassistant"]
+# В Docker — раскомментировать SYS_ADMIN в docker-compose.yml.
+services = []                     # например ["nginx", "php8.2-fpm"]
+allow_monitored_services = true
+# Контейнеры, которыми можно управлять (шаблоны fnmatch). "*" — все; [] — ни один.
+containers = ["*"]
+container_stop = true             # разрешить остановку (контейнер самого агента остановить нельзя)
+container_logs = true             # просмотр последних строк логов (без подтверждения)
+docker_prune = true               # очистка образов без тегов и кэша сборки
+agent_restart = true              # перезапуск самого агента
 confirm_timeout = 60
 # auto: sudo, если агент запущен не от root
 use_sudo = "auto"
