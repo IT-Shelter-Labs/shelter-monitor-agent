@@ -4,7 +4,7 @@
 
 **Linux server status, problem alerts, and everyday actions in Telegram.**
 
-[Русский](README.md) · [Download a release](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/releases/latest) · [Operations guide](docs/GUIDE_EN.md) · [Telegram IT Shelter](https://t.me/+ihTcvubt-_BhZTQ6)
+[Русский](README.md) · [Download a release](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/releases/latest) · [Operations guide](docs/GUIDE_EN.md) · [Telegram IT Shelter](https://t.me/+bKnkZvdXhw04MTYy)
 
 [![CI](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/actions/workflows/ci.yml)
 ![Linux](https://img.shields.io/badge/platform-Linux-7c5ac7)
@@ -36,7 +36,7 @@ Resource alerts are sent on state changes rather than every polling cycle. Event
 <table>
 <tr><th>Server overview</th><th>Notification settings</th></tr>
 <tr>
-<td width="50%"><img src="docs/assets/status-demo.svg" alt="Server overview and Telegram menu with private details hidden" width="100%"></td>
+<td width="50%"><img src="docs/assets/status-demo.svg" alt="Server overview and Telegram menu with synthetic demonstration data" width="100%"></td>
 <td width="50%"><img src="docs/assets/notifications-demo.svg" alt="Notification categories and mute controls" width="100%"></td>
 </tr>
 </table>
@@ -52,7 +52,7 @@ Use **Docker Engine and Docker Compose on the Linux server being monitored**. Do
 ```bash
 git clone https://github.com/IT-Shelter-Labs/shelter-monitor-agent.git
 cd shelter-monitor-agent
-git checkout v0.1.0
+git checkout v0.1.1
 cp config/agent.example.toml config.toml
 chmod 600 config.toml
 docker compose build
@@ -95,7 +95,7 @@ For Debian 12+ or Ubuntu 22.04+ with systemd and Python 3.10+:
 ```bash
 git clone https://github.com/IT-Shelter-Labs/shelter-monitor-agent.git
 cd shelter-monitor-agent
-git checkout v0.1.0
+git checkout v0.1.1
 sudo ./scripts/install.sh --no-start
 sudo nano /etc/shelter-agent/config.toml
 sudo shelter-agent get-chat-id
@@ -124,7 +124,7 @@ The installer creates the `shelter` user, copies code into `/opt/shelter-monitor
 | `/check`, `/diag` | Run checks now; inspect deployment configuration |
 | `/notify`, `/mute 2h`, `/unmute` | Categories and notification muting |
 | `/actions` | Available actions |
-| `/help`, `/id` | Help; user and chat IDs |
+| `/help`, `/id` | Help with an IT Shelter channel link; user and chat IDs |
 
 ## Configuration and permissions
 
@@ -173,7 +173,7 @@ Back up the configuration and data, then select the desired release tag:
 
 ```bash
 git fetch --tags
-git checkout v0.1.0  # replace with the desired release tag
+git checkout v0.1.1  # replace with the desired release tag
 docker compose up -d --build
 ```
 
@@ -191,6 +191,6 @@ CI covers Python 3.10–3.13, linters, Docker builds, and compose validation. [A
 
 ## IT Shelter
 
-[Telegram channel](https://t.me/+ihTcvubt-_BhZTQ6) · [More projects](https://github.com/IT-Shelter-Labs) · [Report a bug](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/issues)
+[Telegram channel](https://t.me/+bKnkZvdXhw04MTYy) · [More projects](https://github.com/IT-Shelter-Labs) · [Report a bug](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/issues)
 
 Include the version, installation method, and `/diag` output in bug reports. Hide tokens, IP addresses, and other private details before sharing.

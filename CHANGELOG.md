@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- В справку `/help` добавлена ссылка «Канал автора: IT Shelter»; в обычные уведомления ссылка не добавляется.
+- Панели в README заменены демонстрационными примерами без данных реального сервера.
+
+- Added an IT Shelter author-channel link to `/help`, without adding it to routine notifications.
+- Replaced README panels with synthetic examples containing no real server data.
+
 ## 0.1.0
 
 Первый публичный релиз / First public release.

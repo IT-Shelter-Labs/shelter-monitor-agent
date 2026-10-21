@@ -40,6 +40,7 @@ MAIN_MENU: Rows = [
 
 BACK: list[tuple[str, str]] = [("⬅️ Меню", "v:status")]
 CONTAINERS_PER_PAGE = 10
+IT_SHELTER_CHANNEL_URL = "https://t.me/+bKnkZvdXhw04MTYy"
 
 # packages providing common units (for the "how to install" hint)
 INSTALL_HINTS = {
@@ -556,4 +557,5 @@ def diag_view(agent: "Agent") -> View:
 
 def about_text(agent: "Agent") -> str:
     return (f"Shelter Monitor Agent {__version__} на <code>{esc(agent.host)}</code>\n"
-            f"Агент работает {fmt_duration(time.time() - agent.started_at)}")
+            f"Агент работает {fmt_duration(time.time() - agent.started_at)}\n\n"
+            f'Канал автора: <a href="{IT_SHELTER_CHANNEL_URL}">IT Shelter</a>')

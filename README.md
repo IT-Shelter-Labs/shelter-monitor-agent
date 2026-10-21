@@ -4,7 +4,7 @@
 
 **Состояние Linux-сервера, уведомления о проблемах и нужные действия прямо в Telegram.**
 
-[English](README_EN.md) · [Скачать релиз](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/releases/latest) · [Подробное руководство](docs/GUIDE_RU.md) · [Telegram IT Shelter](https://t.me/+ihTcvubt-_BhZTQ6)
+[English](README_EN.md) · [Скачать релиз](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/releases/latest) · [Подробное руководство](docs/GUIDE_RU.md) · [Telegram IT Shelter](https://t.me/+bKnkZvdXhw04MTYy)
 
 [![CI](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/actions/workflows/ci.yml)
 ![Linux](https://img.shields.io/badge/platform-Linux-7c5ac7)
@@ -36,7 +36,7 @@
 <table>
 <tr><th>Сводка и меню</th><th>Настройки уведомлений</th></tr>
 <tr>
-<td width="50%"><img src="docs/assets/status-demo.svg" alt="Сводка сервера и меню; частные данные скрыты" width="100%"></td>
+<td width="50%"><img src="docs/assets/status-demo.svg" alt="Сводка и меню на вымышленных демонстрационных данных" width="100%"></td>
 <td width="50%"><img src="docs/assets/notifications-demo.svg" alt="Категории уведомлений и временное отключение" width="100%"></td>
 </tr>
 </table>
@@ -52,7 +52,7 @@
 ```bash
 git clone https://github.com/IT-Shelter-Labs/shelter-monitor-agent.git
 cd shelter-monitor-agent
-git checkout v0.1.0
+git checkout v0.1.1
 cp config/agent.example.toml config.toml
 chmod 600 config.toml
 docker compose build
@@ -95,7 +95,7 @@ docker compose logs --tail=50
 ```bash
 git clone https://github.com/IT-Shelter-Labs/shelter-monitor-agent.git
 cd shelter-monitor-agent
-git checkout v0.1.0
+git checkout v0.1.1
 sudo ./scripts/install.sh --no-start
 sudo nano /etc/shelter-agent/config.toml
 sudo shelter-agent get-chat-id
@@ -124,7 +124,7 @@ journalctl -u shelter-agent -f
 | `/check`, `/diag` | Проверить всё сейчас; проверить настройку |
 | `/notify`, `/mute 2h`, `/unmute` | Категории и пауза уведомлений |
 | `/actions` | Доступные действия |
-| `/help`, `/id` | Справка; ID пользователя и чата |
+| `/help`, `/id` | Справка со ссылкой на канал IT Shelter; ID пользователя и чата |
 
 ## Настройка и права
 
@@ -173,7 +173,7 @@ agent_restart = false
 
 ```bash
 git fetch --tags
-git checkout v0.1.0  # замените на тег нужного выпуска
+git checkout v0.1.1  # замените на тег нужного выпуска
 docker compose up -d --build
 ```
 
@@ -191,6 +191,6 @@ CI проверяет Python 3.10–3.13, линтеры, Docker и compose. [А
 
 ## IT Shelter
 
-[Telegram-канал](https://t.me/+ihTcvubt-_BhZTQ6) · [Другие проекты](https://github.com/IT-Shelter-Labs) · [Сообщить об ошибке](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/issues)
+[Telegram-канал](https://t.me/+bKnkZvdXhw04MTYy) · [Другие проекты](https://github.com/IT-Shelter-Labs) · [Сообщить об ошибке](https://github.com/IT-Shelter-Labs/shelter-monitor-agent/issues)
 
 В отчёте укажите версию, способ установки и результат `/diag`. Перед отправкой скройте токен, IP-адреса и другие частные данные.

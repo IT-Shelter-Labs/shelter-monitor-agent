@@ -124,6 +124,16 @@ class BotTest(unittest.TestCase):
             self.assertTrue(texts, cmd)
             self.assertNotIn("Ошибка при получении данных", texts[-1], cmd)
 
+    def test_help_has_author_channel_without_adding_it_to_status(self):
+        link = '<a href="https://t.me/+bKnkZvdXhw04MTYy">IT Shelter</a>'
+        self.bot.handle_update(msg("/help"))
+        help_text = self.api.texts("sendMessage")[-1]
+        self.assertIn("Канал автора: " + link, help_text)
+        self.assertLessEqual(len(help_text), 4096)
+        self.assertTrue(help_text.endswith(link))
+        self.bot.handle_update(msg("/status"))
+        self.assertNotIn("t.me/", self.api.texts("sendMessage")[-1])
+
     def test_view_buttons_edit_in_place(self):
         for view in ("status", "metrics", "docker:0", "services", "ssh", "security", "events_all", "devices",
                      "notify", "actions", "diag"):
