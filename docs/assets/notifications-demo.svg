@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="517" viewBox="0 0 440 517" role="img" aria-label="Настройки уведомлений: демонстрационные данные">
+<title>Настройки уведомлений: демонстрационные данные</title>
+<desc>Synthetic demonstration data generated from bot text and buttons. No real server details.</desc>
+<rect width="440" height="517" rx="14" fill="#0e1721"/>
+<text x="16" y="26" fill="#a6b3bf" font-size="11" font-family="Arial,sans-serif" letter-spacing="1">ДЕМОНСТРАЦИОННЫЕ ДАННЫЕ</text>
+<rect x="14" y="42" width="412" height="200" rx="12" fill="#192a38"/>
+<text x="30" y="67" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">🔔 Уведомления</text>
+<text x="30" y="88" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve"></text>
+<text x="30" y="109" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">🔔 Включены</text>
+<text x="30" y="130" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">Минимальная важность: warning (меняется в</text>
+<text x="30" y="151" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">конфиге)</text>
+<text x="30" y="172" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve"></text>
+<text x="30" y="193" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">Категории (нажмите, чтобы переключить;</text>
+<text x="30" y="214" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">критические приходят всегда):</text>
+<rect x="14.0" y="247" width="134.7" height="39" rx="5" fill="#1e303e"/>
+<text x="81.3" y="271" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🔕 1 час</text>
+<rect x="152.7" y="247" width="134.7" height="39" rx="5" fill="#1e303e"/>
+<text x="220.0" y="271" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🔕 8 часов</text>
+<rect x="291.3" y="247" width="134.7" height="39" rx="5" fill="#1e303e"/>
+<text x="358.7" y="271" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🔕 24 часа</text>
+<rect x="14.0" y="290" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="314" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ Ресурсы системы</text>
+<rect x="222.0" y="290" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="314" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ Сервисы systemd</text>
+<rect x="14.0" y="333" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="357" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ Docker</text>
+<rect x="222.0" y="333" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="357" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ SSH-входы</text>
+<rect x="14.0" y="376" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="400" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ Безопасность</text>
+<rect x="222.0" y="376" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="400" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ Сеть и связь</text>
+<rect x="14.0" y="419" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="443" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ Устройства в LAN</text>
+<rect x="222.0" y="419" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="443" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">✅ Агент и действия</text>
+<rect x="14.0" y="462" width="412.0" height="39" rx="5" fill="#1e303e"/>
+<text x="220.0" y="486" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">⬅️ Меню</text>
+</svg>

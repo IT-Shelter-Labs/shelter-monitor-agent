@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="622" viewBox="0 0 440 622" role="img" aria-label="Сводка сервера: демонстрационные данные">
+<title>Сводка сервера: демонстрационные данные</title>
+<desc>Synthetic demonstration data generated from bot text and buttons. No real server details.</desc>
+<rect width="440" height="622" rx="14" fill="#0e1721"/>
+<text x="16" y="26" fill="#a6b3bf" font-size="11" font-family="Arial,sans-serif" letter-spacing="1">ДЕМОНСТРАЦИОННЫЕ ДАННЫЕ</text>
+<rect x="14" y="42" width="412" height="305" rx="12" fill="#192a38"/>
+<text x="30" y="67" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">🖥 demo-server · Linux (демо)</text>
+<text x="30" y="88" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">⏱ Аптайм: 2ч 0м</text>
+<text x="30" y="109" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve"></text>
+<text x="30" y="130" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">🟢 Проблем не обнаружено</text>
+<text x="30" y="151" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve"></text>
+<text x="30" y="172" fill="#83b9de" font-size="14" font-family="Consolas,monospace" xml:space="preserve">CPU  █░░░░░░░░░  12%</text>
+<text x="30" y="193" fill="#83b9de" font-size="14" font-family="Consolas,monospace" xml:space="preserve">RAM  ███░░░░░░░  34%</text>
+<text x="30" y="214" fill="#83b9de" font-size="14" font-family="Consolas,monospace" xml:space="preserve">Disk ████░░░░░░  41% /</text>
+<text x="30" y="235" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">Load: 0.12 0.09 0.07 (ядер: 4) · 🌡 40°C</text>
+<text x="30" y="256" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">🐳 Docker: 2/2 запущено</text>
+<text x="30" y="277" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">⚙️ Сервисы: 2/2 работают</text>
+<text x="30" y="298" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve"></text>
+<text x="30" y="319" fill="#eef2f6" font-size="14" font-family="Arial,Segoe UI Emoji,sans-serif" xml:space="preserve">Обновлено 12:00:00</text>
+<rect x="14.0" y="352" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="376" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🔄 Обновить</text>
+<rect x="222.0" y="352" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="376" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">📊 Метрики</text>
+<rect x="14.0" y="395" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="419" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🐳 Docker</text>
+<rect x="222.0" y="395" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="419" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">⚙️ Сервисы</text>
+<rect x="14.0" y="438" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="462" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🔑 SSH</text>
+<rect x="222.0" y="438" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="462" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🛡 Безопасность</text>
+<rect x="14.0" y="481" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="505" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">📡 Устройства LAN</text>
+<rect x="222.0" y="481" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="505" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">📜 События</text>
+<rect x="14.0" y="524" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="548" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🛠 Действия</text>
+<rect x="222.0" y="524" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="548" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🔔 Уведомления</text>
+<rect x="14.0" y="567" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="116.0" y="591" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🔍 Проверить всё</text>
+<rect x="222.0" y="567" width="204.0" height="39" rx="5" fill="#1e303e"/>
+<text x="324.0" y="591" text-anchor="middle" fill="#eef2f6" font-size="12" font-family="Arial,Segoe UI Emoji,sans-serif">🩺 Диагностика</text>
+</svg>
