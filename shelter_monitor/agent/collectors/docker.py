@@ -7,6 +7,7 @@ import json
 import os
 import re
 import socket
+import threading
 import urllib.parse
 from dataclasses import dataclass
 from typing import Any
@@ -23,8 +24,12 @@ class _UnixHTTPConnection(http.client.HTTPConnection):
 
     def connect(self) -> None:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.settimeout(self.timeout)
-        sock.connect(self._socket_path)
+        try:
+            sock.settimeout(self.timeout)
+            sock.connect(self._socket_path)
+        except BaseException:
+            sock.close()
+            raise
         self.sock = sock
 
 
@@ -44,19 +49,49 @@ class Container:
 
 
 class DockerClient:
-    API_VERSION = "v1.41"  # Docker 20.10+, still accepted by current engines
+    # Use only the API range exercised by this client. Docker 29 removed 1.41.
+    MIN_API = (1, 41)  # Docker 20.10
+    MAX_API = (1, 44)  # Docker 25+, including Docker 29's minimum
 
     def __init__(self, socket_path: str = "/var/run/docker.sock", timeout: float = 15):
         self.socket_path = socket_path
         self.timeout = timeout
+        self._api_version: str | None = None
+        self._version_lock = threading.Lock()
 
     def available(self) -> bool:
         return os.path.exists(self.socket_path)
 
     def _request(self, method: str, path: str, timeout: float | None = None, raw: bool = False) -> Any:
+        version = self._negotiate_version()
+        return self._send(method, f"/{version}{path}", timeout, raw)
+
+    def _negotiate_version(self) -> str:
+        with self._version_lock:
+            if self._api_version is not None:
+                return self._api_version
+            info = self._send("GET", "/version")
+            if not isinstance(info, dict):
+                raise DockerError("docker /version: invalid response")
+
+            def parse(value: Any) -> tuple[int, int]:
+                if not isinstance(value, str) or not re.fullmatch(r"\d+\.\d+", value):
+                    raise DockerError("docker /version: invalid API version")
+                major, minor = value.split(".")
+                return int(major), int(minor)
+
+            server_max = parse(info.get("ApiVersion"))
+            server_min = parse(info.get("MinAPIVersion", "1.12"))
+            selected = min(server_max, self.MAX_API)
+            if selected < max(server_min, self.MIN_API):
+                raise DockerError("docker API version range is incompatible with this agent (supported: 1.41-1.44)")
+            self._api_version = f"v{selected[0]}.{selected[1]}"
+            return self._api_version
+
+    def _send(self, method: str, path: str, timeout: float | None = None, raw: bool = False) -> Any:
         conn = _UnixHTTPConnection(self.socket_path, timeout or self.timeout)
         try:
-            conn.request(method, f"/{self.API_VERSION}{path}", headers={"Host": "docker"})
+            conn.request(method, path, headers={"Host": "docker"})
             resp = conn.getresponse()
             body = resp.read()
         except (OSError, http.client.HTTPException) as exc:
@@ -80,13 +115,13 @@ class DockerClient:
 
     def ping(self) -> bool:
         try:
-            self._request("GET", "/_ping")
+            self._send("GET", "/_ping")
             return True
         except DockerError:
             return False
 
     def version(self) -> dict[str, Any]:
-        return self._request("GET", "/version")
+        return self._send("GET", "/version")
 
     def containers(self) -> list[Container]:
         data = self._request("GET", "/containers/json?all=1")

@@ -46,6 +46,15 @@ jobs:
         run: |
           docker run --rm shelter-monitor:ci agent --version
           docker run --rm shelter-monitor:ci agent status
+      - name: Check host Docker API compatibility
+        run: |
+          python3 - <<'PY'
+          from shelter_monitor.agent.collectors.docker import DockerClient
+          client = DockerClient()
+          assert client.ping(), "Docker daemon must be reachable"
+          print("Docker API:", client.version()["ApiVersion"])
+          print("Containers:", len(client.containers()))
+          PY
       - name: Validate compose files
         run: |
           touch config.toml watchdog.toml
